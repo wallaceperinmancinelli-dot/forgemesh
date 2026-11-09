@@ -240,7 +240,15 @@ def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
         out = os.path.join(tempfile.mkdtemp(), "raw" + os.path.splitext(fallback)[1])
         shutil.copy(fallback, out)
         return out
-    raise RuntimeError(f"[v2] Ningún Space respondió. Probados: {chr(10).join(errores) or 'ninguno (todos marcados rotos o sin internet)'}. Último error: {last_err}. "
+    if any("quota" in e.lower() for e in errores):
+        raise RuntimeError(
+            "Los servidores gratis funcionan, pero se te acabó la cuota diaria de GPU de Hugging Face "
+            "(sin cuenta es casi cero). Solución: creá una cuenta gratis en huggingface.co, andá a Settings → "
+            "Access Tokens → New token (tipo Read), copiá el token y pegalo en ForgeMesh → Ajustes → "
+            "'Token de Hugging Face' → Guardar. Con cuenta gratis tenés unos 3-4 minutos de GPU por día "
+            "(alcanza para varios modelos); con Hugging Face PRO (9 USD/mes) tenés 25 minutos. "
+            "Detalle: " + " | ".join(errores)[:300])
+    raise RuntimeError(f"[v7] Ningún Space respondió. Probados: {chr(10).join(errores) or 'ninguno (todos marcados rotos o sin internet)'}. Último error: {last_err}. "
                        "Prueba de nuevo en unos minutos o añade tu token de Hugging Face (más cuota).")
 
 
