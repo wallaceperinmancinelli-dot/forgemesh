@@ -1,0 +1,9 @@
+gradio>=4.44
+gradio_client
+trimesh
+numpy
+pillow
+fast-simplification
+pymeshlab
+rembg[cpu]
+scipy

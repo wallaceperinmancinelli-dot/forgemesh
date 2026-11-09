@@ -1,0 +1,5 @@
+FORGEMESH - Imagen a 3D para videojuegos
+1) Doble clic en INICIAR.bat (instala todo solo la primera vez y abre el navegador).
+Motor "Nube gratis": usa los Spaces gratuitos de Hugging Face (Hunyuan3D / TRELLIS), sin GPU. Hay cola.
+Motor "Local": solo con GPU NVIDIA de 12 GB+. Requiere instalar hy3dgen (ver GitHub Tencent-Hunyuan/Hunyuan3D-2).
+Los modelos salen en la carpeta "salida" (GLB y OBJ). En Roblox Studio: Asset Manager > Bulk Import.

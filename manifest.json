@@ -1,0 +1,28 @@
+{
+ "version": "1",
+ "archivos": {
+  "app.py": "5e99f7f5e1c858ab31f660d0bce21c8ac05548c91d0d262dac9b96b791c799e6",
+  "engines.py": "5ad628eb20f20fb60e57add8b5d1e4f04dc94bb9a18547cc7e0700d502db23c0",
+  "materials.py": "6e7233633502da5c5767f8446b2678de5952453d93bef4fc27b47cfd87da8984",
+  "parts.py": "cff9dfc070b8b9e9b6f0bbc411c38b0936b0421eef4fe18d45da3ae8466a2a88",
+  "templates.py": "1bbb4557c070b35b36737e7701848734f763b2a6afcb67798ebec866ee5c2163",
+  "analysis.py": "a8150aa73957aad5585c603254099c7abfb0d15f504720f1724ec578aa86c8e1",
+  "ajustes.py": "8daaef746e3b35adbaa78bcba94f245d8d947d1e7ea397d06b8134627de478bf",
+  "actualizador.py": "99b5aaa0374d7a0185bd15d941a73115a6dc618bc0118d6ef4485da76706981d",
+  "optimize.py": "e00f074eb27971648a8599eac9452b75003f1631def3cca88deeac4786148c6a",
+  "motor_luau.lua": "414b9a55fd7a01af6aeb9c78338fee39f2f44f6ca83de42fc9c8bb9f4897d752",
+  "conocimiento_roblox.md": "9b11685d0c2b1893ae1910f5f9a568eb26fd9150186989001d6122bb8a2261d4",
+  "requirements.txt": "c4729b64431d3125919e3f1f986a799ac1673ba5442232f0c3a036196c4413dd"
+ },
+ "requirements": [
+  "gradio",
+  "gradio_client",
+  "trimesh",
+  "numpy",
+  "pillow",
+  "fast-simplification",
+  "pymeshlab",
+  "rembg[cpu]",
+  "scipy"
+ ]
+}
