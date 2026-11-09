@@ -1,13 +1,13 @@
 {
- "version": "5",
+ "version": "6",
  "archivos": {
-  "app.py": "fdb711cb1b6714eb5b0e8932d23e78fce0f0628122c9980d50202eeb7deb3ed4",
+  "app.py": "e395d398dffa93fe780737c77b0c3e1a3df799578f2b8d3b12b7c1afc146c5a0",
   "engines.py": "afdd7f7d307fb2eeb9d773206769754625486e279f01356eace0ace2a9069331",
   "materials.py": "6e7233633502da5c5767f8446b2678de5952453d93bef4fc27b47cfd87da8984",
   "parts.py": "cff9dfc070b8b9e9b6f0bbc411c38b0936b0421eef4fe18d45da3ae8466a2a88",
   "templates.py": "1bbb4557c070b35b36737e7701848734f763b2a6afcb67798ebec866ee5c2163",
   "analysis.py": "a8150aa73957aad5585c603254099c7abfb0d15f504720f1724ec578aa86c8e1",
-  "ajustes.py": "92a1cd20f7a8252080169feef553278e6e9ccee0147f8b14c372aae8409bf938",
+  "ajustes.py": "d61286bf2619aff3e21db89ef3b47d14a21ced7ea75ece3c2286eb1810753246",
   "actualizador.py": "99b5aaa0374d7a0185bd15d941a73115a6dc618bc0118d6ef4485da76706981d",
   "optimize.py": "e00f074eb27971648a8599eac9452b75003f1631def3cca88deeac4786148c6a",
   "motor_luau.lua": "414b9a55fd7a01af6aeb9c78338fee39f2f44f6ca83de42fc9c8bb9f4897d752",

@@ -219,12 +219,14 @@ def _txt(c):
 
 def _llm(backend, modelo, key, msgs, ctx):
     if backend.startswith("Ollama"):
+        if str(modelo).startswith("claude"):
+            modelo = ajustes.DEFAULT["modelo"]
         try:
             with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
                 inst = [m["name"] for m in json.loads(r.read().decode("utf-8")).get("models", [])]
         except Exception:
             raise RuntimeError("Ollama no está abierto o no está instalado. Instálalo gratis desde ollama.com "
-                               "(o en Ajustes elige 'Claude API' y pon tu clave).")
+                               "(o en Ajustes elige 'Claude (API key, de pago)' y pon tu clave).")
         if modelo not in inst and f"{modelo}:latest" not in inst:
             if inst:
                 modelo = inst[0]
@@ -302,7 +304,7 @@ def agente(msg, hist, mod, ultimo, nombre, carpeta, anim, clips, cortes, c_id, m
         ans = _llm(cfg["backend"], cfg["modelo"], cfg["api_key"], msgs, _contexto(carpeta, anim, clips, bool(fuente), brief))
     except Exception as e:
         hist.append({"role": "assistant", "content": "No pude hablar con el modelo: " + str(e) +
-                     "\n\nSi usas Ollama: ábrelo y revisa que el modelo esté instalado (botón 'Ver modelos de Ollama')."})
+                     "\n\nSi usas Ollama: ábrelo y revisa que el modelo esté instalado (Ajustes → 'Ver modelos instalados en Ollama')."})
         return ["", hist, anim, clips, cortes, carpeta, res["codigo"], res["lua"]]
 
     log = []
@@ -398,11 +400,38 @@ def script_plataforma():
 
 MODOS = materials.MODOS
 
+TEMA = gr.themes.Base(
+    primary_hue=gr.themes.colors.amber, secondary_hue=gr.themes.colors.orange, neutral_hue=gr.themes.colors.slate,
+    font=[gr.themes.GoogleFont("Inter"), "Segoe UI", "sans-serif"], radius_size=gr.themes.sizes.radius_lg,
+).set(
+    body_background_fill="#0b0d12", block_background_fill="#141821", block_border_color="#242a38",
+    block_label_background_fill="#141821", input_background_fill="#0f1218", input_border_color="#2a3142",
+    button_primary_background_fill="linear-gradient(135deg,#f6b73c,#e8731a)", button_primary_background_fill_hover="linear-gradient(135deg,#ffc95a,#f0842e)",
+    button_primary_text_color="#1a1206", button_secondary_background_fill="#1b2130", button_secondary_text_color="#e6e9f0",
+    block_title_text_color="#cfd5e3", body_text_color="#e6e9f0", background_fill_secondary="#0b0d12",
+)
+CSS = """
+.gradio-container{max-width:1280px !important;margin:auto}
+#hero{padding:22px 26px;border-radius:18px;margin:6px 0 14px;background:radial-gradient(900px 220px at 0% 0%,rgba(246,183,60,.22),transparent),linear-gradient(135deg,#171c28,#10131b);border:1px solid #2a3142}
+#hero h1{margin:0;font-size:30px;letter-spacing:.5px;background:linear-gradient(90deg,#ffd27a,#f08a2e);-webkit-background-clip:text;background-clip:text;color:transparent}
+#hero p{margin:6px 0 0;color:#9aa4b8;font-size:14px}
+#hero .pasos{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#hero .pasos span{background:#1d2333;border:1px solid #2d354a;border-radius:999px;padding:4px 12px;font-size:12px;color:#c9d1e3}
+.tab-nav button, .tabs > div > button{font-weight:600 !important;font-size:15px !important}
+button.primary{font-weight:700 !important;letter-spacing:.3px;box-shadow:0 6px 18px rgba(232,115,26,.28)}
+.nota{border-left:3px solid #f6b73c;background:#171c28;padding:10px 14px;border-radius:10px;color:#b7c0d4;font-size:13px}
+textarea,input{font-size:14px !important}
+#logbox textarea,#codigo textarea{font-family:Consolas,'Courier New',monospace !important;font-size:12.5px !important}
+footer{display:none !important}
+"""
+
 with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
-    gr.Markdown("# ForgeMesh\nImagen → modelo 3D → materiales → piezas → animación (Roblox, Unity, Unreal, Godot).")
+    gr.HTML("""<div id="hero"><h1>⚒ ForgeMesh</h1>
+<p>De tus fotos a un modelo 3D listo para juego, separado en piezas y animado con calidad AAA. Todo automático.</p>
+<div class="pasos"><span>1 · Fotos → 3D</span><span>2 · Metal y color PBR</span><span>3 · Piezas</span><span>4 · Animación y Luau</span><span>5 · Chat que lo hace todo</span></div></div>""")
     ultimo = gr.State(None)
     brief = gr.State("")
-    with gr.Tab("Imagen a 3D"):
+    with gr.Tab("🖼 Imagen a 3D"):
         with gr.Row():
             with gr.Column():
                 img = gr.File(file_count="multiple", file_types=["image"], label="Imágenes de referencia (1 o muchas: ángulos, cerca y lejos, detalles)")
@@ -424,25 +453,29 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
                 files = gr.File(label="Archivos (también en la carpeta 'salida')", file_count="multiple")
                 maskimg = gr.Image(label="Zonas detectadas como metal (blanco = metal)", type="pil")
                 briefbox = gr.Textbox(label="Lo que entendí de tus imágenes", lines=5)
-                logbox = gr.Textbox(label="Registro", lines=6)
+                logbox = gr.Textbox(label="Registro", lines=6, elem_id="logbox")
         btn.click(run, [img, motor, preset, tris, altura, quitar, nombre, metal, fuerza, saturar, mapas],
                   [view, files, logbox, maskimg, ultimo, briefbox, brief])
 
-    with gr.Tab("Optimizar un modelo que ya tengo"):
-        m = gr.File(label="Modelo (.glb .obj .fbx .ply)")
-        p2 = gr.Dropdown(list(opt.PRESETS), value="Roblox (20k tris, tex 1024)", label="Preset")
-        t2 = gr.Number(label="Triángulos (opcional)"); a2 = gr.Number(label="Altura final (opcional)")
-        me2 = gr.Dropdown(MODOS, value=MODOS[2], label="Detectar metal")
-        fu2 = gr.Slider(0, 1, value=1.0, step=0.05, label="Intensidad del metal")
-        sa2 = gr.Checkbox(False, label="Realzar colores")
-        ma2 = gr.Checkbox(False, label="Guardar mapas para Roblox")
-        b2 = gr.Button("Optimizar", variant="primary")
-        v2 = gr.Model3D(); f2 = gr.File(file_count="multiple"); k2 = gr.Image(type="pil", label="Máscara de metal"); l2 = gr.Textbox(lines=4)
+    with gr.Tab("⚙ Optimizar modelo"):
+        with gr.Row():
+            with gr.Column():
+                m = gr.File(label="Modelo (.glb .obj .fbx .ply)")
+                p2 = gr.Dropdown(list(opt.PRESETS), value="Roblox (20k tris, tex 1024)", label="Preset")
+                with gr.Row():
+                    t2 = gr.Number(label="Triángulos (opcional)"); a2 = gr.Number(label="Altura final (opcional)")
+                me2 = gr.Dropdown(MODOS, value=MODOS[2], label="Detectar metal")
+                fu2 = gr.Slider(0, 1, value=1.0, step=0.05, label="Intensidad del metal")
+                sa2 = gr.Checkbox(False, label="Realzar colores")
+                ma2 = gr.Checkbox(False, label="Guardar mapas para Roblox")
+                b2 = gr.Button("Optimizar", variant="primary")
+            with gr.Column():
+                v2 = gr.Model3D(label="Vista previa", height=420); f2 = gr.File(file_count="multiple", label="Archivos")
+                k2 = gr.Image(type="pil", label="Máscara de metal"); l2 = gr.Textbox(lines=4, label="Registro")
         b2.click(solo_optimizar, [m, p2, t2, a2, me2, fu2, sa2, ma2], [v2, f2, l2, k2, ultimo])
 
-    with gr.Tab("Piezas y animación"):
-        gr.Markdown("1) Separa el modelo en piezas. 2) Escribe qué hace cada pieza. 3) Genera el script de Roblox "
-                    "(todo se calcula aquí, sin gastar tokens de Claude).")
+    with gr.Tab("🧩 Piezas y animación"):
+        gr.HTML('<div class="nota">1) Separá el modelo en piezas · 2) Describí qué hace cada una (o usá el Chat) · 3) Generá el script de Roblox. Todo se calcula acá, sin gastar tokens.</div>')
         mod = gr.File(label="Modelo .glb (si acabas de generar uno, usa el botón de abajo)")
         usar = gr.Button("Usar el último modelo generado")
         nom3 = gr.Textbox("modelo", label="Nombre del modelo")
@@ -460,7 +493,7 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
             r_id = gr.Textbox(label="RoughnessMap (rbxassetid://...)")
         bgen = gr.Button("Generar script Luau", variant="primary")
         log4 = gr.Textbox(label="Resultado", lines=3)
-        codigo = gr.Textbox(label="Script Luau (copia y pega en un ModuleScript)", lines=18)
+        codigo = gr.Textbox(label="Script Luau (copia y pega en un ModuleScript)", lines=18, elem_id="codigo")
         archivo_lua = gr.File(label="Archivo .lua")
         bplat = gr.Button("Script de plataforma móvil (para que los jugadores viajen de pie en el tren)")
         plat = gr.Textbox(label="LocalScript de plataforma móvil", lines=12)
@@ -469,10 +502,10 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
         bsep.click(separar, [mod, nom3, cortes], [log3, anim, carpeta, archivos3])
         bgen.click(generar_script, [carpeta, anim, clips, c_id, m_id, r_id], [log4, codigo, archivo_lua])
 
-    with gr.Tab("Chat / asistente"):
+    with gr.Tab("💬 Chat animador"):
         gr.Markdown("Dale instrucciones en lenguaje normal (\"que la mandíbula se abra con rebote cada 3 s\"). "
                     "Ejecuta todo solo: separa el modelo, anima y regenera el script. El cerebro se elige en **Ajustes**.")
-        chat = gr.Chatbot(height=440, label="Chat")
+        chat = gr.Chatbot(height=520, label="Chat")
         entrada = gr.Textbox(label="Instrucción", placeholder="Ej: parte_03 es la mandíbula; haz un monstruo aterrador con rugido y mordisco")
         with gr.Row():
             benv = gr.Button("Enviar", variant="primary")
@@ -482,8 +515,11 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
         entrada.submit(agente, ent, sal)
         benv.click(agente, ent, sal)
         blim.click(lambda: [], None, [chat])
+        gr.Examples([["Hacé un monstruo aterrador: mandíbula con mordisco y rugido, ojos que brillan"],
+                     ["Que las ruedas giren según la velocidad y el humo salga de la chimenea"],
+                     ["Animación de arranque del tren con anticipación, sacudida de cámara y bocinazo"]], inputs=[entrada], label="Ideas para probar")
 
-    with gr.Tab("Ajustes"):
+    with gr.Tab("🔧 Ajustes"):
         _c = ajustes.cargar()
         gr.Markdown("Se guardan una sola vez en `config.json` en tu PC. **Cerebro** = el que dirige las animaciones (chat) y analiza tus imágenes.")
         s_backend = gr.Radio(["Ollama (local, gratis)", "Claude (API key, de pago)"], value=_c["backend"], label="Cerebro")
@@ -494,7 +530,8 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
         s_vermod = gr.Button("Ver modelos instalados en Ollama")
         s_key = gr.Textbox(value=_c["api_key"], label="API key de Anthropic (para Claude: mejor calidad, analiza hasta 20+ imágenes)", type="password")
         s_hf = gr.Textbox(value=_c["hf_token"], label="Token de Hugging Face (opcional, más cuota gratis)", type="password")
-        s_url = gr.Textbox(value=_c["update_url"], label="URL de actualizaciones automáticas (te la doy yo; se pega una sola vez)")
+        with gr.Accordion("Avanzado", open=False):
+            s_url = gr.Textbox(value=_c["update_url"], label="URL de actualizaciones (ya viene configurada)")
         s_auto = gr.Checkbox(_c["auto_update"], label="Actualizar ForgeMesh automáticamente al abrirlo")
         s_btn = gr.Button("Guardar ajustes", variant="primary")
         s_msg = gr.Textbox(label="Estado", lines=1)
@@ -533,14 +570,14 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    _url = "http://127.0.0.1:7860"
+    _url = "http://127.0.0.1:7871/?__theme=dark"
     _s = socket.socket()
-    _ya = _s.connect_ex(("127.0.0.1", 7860)) == 0
+    _ya = _s.connect_ex(("127.0.0.1", 7871)) == 0
     _s.close()
     if _ya:  # ya esta corriendo: solo abrir la ventana
         _ventana(_url)
         sys.exit(0)
     _acceso_directo()
-    demo.queue().launch(server_name="127.0.0.1", server_port=7860, inbrowser=False, prevent_thread_lock=True)
+    demo.queue().launch(server_name="127.0.0.1", server_port=7871, inbrowser=False, prevent_thread_lock=True, theme=TEMA, css=CSS)
     _ventana(_url)
     demo.block_thread()

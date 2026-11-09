@@ -21,6 +21,9 @@ def cargar():
             cfg.update(json.load(f))
     except Exception:
         pass
+    for k in ("backend", "modelo", "vision_modelo", "update_url"):  # un valor vacio guardado no debe pisar el default
+        if not str(cfg.get(k) or "").strip():
+            cfg[k] = DEFAULT[k]
     return cfg
 
 
