@@ -5,6 +5,52 @@ import os, glob, shutil, tempfile
 MESH_EXT = (".glb", ".gltf", ".obj", ".ply", ".fbx")
 DEFAULT_SPACES = ["tencent/Hunyuan3D-2.1", "tencent/Hunyuan3D-2", "microsoft/TRELLIS"]
 MULTI_SPACES = ["tencent/Hunyuan3D-2mv", "microsoft/TRELLIS"]
+_MALOS = {"CONFIG_ERROR", "BUILD_ERROR", "RUNTIME_ERROR", "PAUSED", "NO_APP_FILE", "STOPPED", "DELETING"}
+
+
+def _estado(space):
+    import json, urllib.request
+    try:
+        with urllib.request.urlopen(f"https://huggingface.co/api/spaces/{space}", timeout=10) as r:
+            return (json.load(r).get("runtime") or {}).get("stage")
+    except Exception:
+        return None
+
+
+def _descubrir(multi, log):
+    """Busca en Hugging Face otros Spaces de imagen a 3D que esten funcionando."""
+    import json, urllib.request, urllib.parse
+    out = []
+    for q in (["hunyuan3d mv", "trellis"] if multi else ["hunyuan3d", "trellis", "image to 3d"]):
+        try:
+            url = "https://huggingface.co/api/spaces?sort=likes&direction=-1&limit=12&search=" + urllib.parse.quote(q)
+            with urllib.request.urlopen(url, timeout=10) as r:
+                for d in json.load(r):
+                    if d.get("sdk") == "gradio" and d.get("id") not in out:
+                        out.append(d["id"])
+        except Exception:
+            pass
+    return out
+
+
+def _spaces_validos(base, multi, log):
+    res, vistos = [], set()
+    for sp in list(base) + [None]:
+        if sp is None:
+            nuevos = [x for x in _descubrir(multi, log) if x not in vistos]
+            if nuevos:
+                log("Buscando otros Spaces de 3D disponibles...")
+            lista = nuevos
+        else:
+            lista = [sp]
+        for x in lista:
+            vistos.add(x)
+            st = _estado(x)
+            if st in _MALOS:
+                log(f"  {x} esta roto ({st}), lo salto.")
+                continue
+            res.append(x)
+    return res
 
 
 def _find_meshes(res, out=None):
@@ -95,7 +141,7 @@ def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
     vistas = image_path if isinstance(image_path, dict) else {"frontal": image_path}
     last_err = None
     fallback = None
-    for space in (spaces or (MULTI_SPACES if multi else DEFAULT_SPACES)):
+    for space in (_spaces_validos(spaces, multi, log) if spaces else _spaces_validos(MULTI_SPACES if multi else DEFAULT_SPACES, multi, log)):
         try:
             log(f"Conectando a {space} ...")
             c, eps = list_endpoints(space, token)

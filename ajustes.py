@@ -9,7 +9,7 @@ DEFAULT = {
     "vision_modelo": "qwen2.5vl:7b",
     "api_key": "",
     "hf_token": "",
-    "update_url": "",
+    "update_url": "https://raw.githubusercontent.com/wallaceperinmancinelli-dot/forgemesh/main",
     "auto_update": True,
 }
 
