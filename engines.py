@@ -141,6 +141,7 @@ def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
     vistas = image_path if isinstance(image_path, dict) else {"frontal": image_path}
     last_err = None
     fallback = None
+    errores = []
     for space in (_spaces_validos(spaces, multi, log) if spaces else _spaces_validos(MULTI_SPACES if multi else DEFAULT_SPACES, multi, log)):
         try:
             log(f"Conectando a {space} ...")
@@ -185,11 +186,12 @@ def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
         except Exception as e:
             last_err = e
             log(f"  {space} no disponible: {str(e)[:140]}")
+            errores.append(f"{space}: {str(e)[:90]}")
     if fallback:
         out = os.path.join(tempfile.mkdtemp(), "raw" + os.path.splitext(fallback)[1])
         shutil.copy(fallback, out)
         return out
-    raise RuntimeError(f"Ningún Space respondió. Último error: {last_err}. "
+    raise RuntimeError(f"[v2] Ningún Space respondió. Probados: {chr(10).join(errores) or 'ninguno (todos marcados rotos o sin internet)'}. Último error: {last_err}. "
                        "Prueba de nuevo en unos minutos o añade tu token de Hugging Face (más cuota).")
 
 
