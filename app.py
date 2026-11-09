@@ -219,6 +219,20 @@ def _txt(c):
 
 def _llm(backend, modelo, key, msgs, ctx):
     if backend.startswith("Ollama"):
+        try:
+            with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=5) as r:
+                inst = [m["name"] for m in json.loads(r.read().decode("utf-8")).get("models", [])]
+        except Exception:
+            raise RuntimeError("Ollama no está abierto o no está instalado. Instálalo gratis desde ollama.com "
+                               "(o en Ajustes elige 'Claude API' y pon tu clave).")
+        if modelo not in inst and f"{modelo}:latest" not in inst:
+            if inst:
+                modelo = inst[0]
+            else:
+                # no hay ningun modelo: descargar uno automaticamente (una sola vez, ~4.7 GB)
+                urllib.request.urlopen(urllib.request.Request("http://localhost:11434/api/pull",
+                    data=json.dumps({"model": modelo, "stream": False}).encode(),
+                    headers={"content-type": "application/json"}), timeout=3600).read()
         body = {"model": modelo, "stream": False, "options": {"num_ctx": 10240, "temperature": 0.3},
                 "messages": [{"role": "system", "content": _kb() + ctx}] + msgs}
         return _post("http://localhost:11434/api/chat", body, {})["message"]["content"]
