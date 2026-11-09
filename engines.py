@@ -3,8 +3,9 @@
 import os, glob, shutil, tempfile
 
 MESH_EXT = (".glb", ".gltf", ".obj", ".ply", ".fbx")
-DEFAULT_SPACES = ["tencent/Hunyuan3D-2.1", "tencent/Hunyuan3D-2", "microsoft/TRELLIS"]
-MULTI_SPACES = ["tencent/Hunyuan3D-2mv", "microsoft/TRELLIS"]
+DEFAULT_SPACES = ["tencent/Hunyuan3D-2.1", "trellis-community/TRELLIS", "JeffreyXiang/TRELLIS", "microsoft/TRELLIS",
+                  "victor/Hunyuan3D-2.1", "tencent/Hunyuan3D-2", "tencent/Hunyuan3D-2mini-Turbo"]
+MULTI_SPACES = ["trellis-community/TRELLIS", "JeffreyXiang/TRELLIS", "microsoft/TRELLIS", "tencent/Hunyuan3D-2mv"]
 _MALOS = {"CONFIG_ERROR", "BUILD_ERROR", "RUNTIME_ERROR", "PAUSED", "NO_APP_FILE", "STOPPED", "DELETING"}
 
 
@@ -26,7 +27,7 @@ def _descubrir(multi, log):
             url = "https://huggingface.co/api/spaces?sort=likes&direction=-1&limit=12&search=" + urllib.parse.quote(q)
             with urllib.request.urlopen(url, timeout=10) as r:
                 for d in json.load(r):
-                    if d.get("sdk") == "gradio" and d.get("id") not in out:
+                    if d.get("sdk") == "gradio" and d.get("id") not in out and any(w in d.get("id", "").lower() for w in ("hunyuan", "trellis", "3d", "tripo", "triposr", "hi3dgen", "step1x")):
                         out.append(d["id"])
         except Exception:
             pass
@@ -136,6 +137,47 @@ def list_endpoints(space, token=None):
     return c, info.get("named_endpoints", {})
 
 
+def _defaults(ep, skip=()):
+    return {p["parameter_name"]: (p.get("parameter_default") if p.get("parameter_has_default") else None)
+            for p in ep["parameters"] if p["parameter_name"] not in skip}
+
+
+def _trellis_flow(c, eps, vistas, multi, log):
+    """TRELLIS: image_to_3d -> extract_glb (dos pasos con sesion). Soporta varias vistas."""
+    from gradio_client import handle_file
+    if "/start_session" in eps:
+        try:
+            c.predict(api_name="/start_session")
+        except Exception:
+            pass
+    ep = eps["/image_to_3d"]
+    paths = list(vistas.values())
+    kw = _defaults(ep, skip=("image", "multiimages"))
+    nombres = [p["parameter_name"] for p in ep["parameters"]]
+    if multi and len(paths) >= 2 and "multiimages" in nombres:
+        kw["image"] = None
+        kw["multiimages"] = [{"image": handle_file(p), "caption": None} for p in paths[:8]]
+        if "multiimage_algo" in nombres:
+            kw["multiimage_algo"] = "stochastic"
+        log(f"TRELLIS con {min(len(paths), 8)} vistas...")
+    else:
+        kw["image"] = handle_file(paths[0])
+        if "multiimages" in nombres:
+            kw["multiimages"] = []
+        log("TRELLIS con 1 vista...")
+    c.predict(api_name="/image_to_3d", **kw)
+    ex = eps["/extract_glb"]
+    kw2 = _defaults(ex)
+    if "mesh_simplify" in kw2:
+        kw2["mesh_simplify"] = 0.95
+    if "texture_size" in kw2:
+        kw2["texture_size"] = 1024
+    log("TRELLIS: extrayendo modelo con textura...")
+    res = c.predict(api_name="/extract_glb", **kw2)
+    cands = _find_meshes(res)
+    return cands[0] if cands else None
+
+
 def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
     """image_path: ruta (una vista) o dict {vista: ruta}. multi=True exige endpoints con 2+ vistas."""
     vistas = image_path if isinstance(image_path, dict) else {"frontal": image_path}
@@ -146,6 +188,13 @@ def generate_cloud(image_path, spaces=None, token=None, log=print, multi=False):
         try:
             log(f"Conectando a {space} ...")
             c, eps = list_endpoints(space, token)
+            if "/image_to_3d" in eps and "/extract_glb" in eps:
+                m = _trellis_flow(c, eps, vistas, multi, log)
+                if m:
+                    out = os.path.join(tempfile.mkdtemp(), "raw" + os.path.splitext(m)[1])
+                    shutil.copy(m, out)
+                    return out
+                continue
 
             def _prio(kv):
                 n = kv[0].lower()
