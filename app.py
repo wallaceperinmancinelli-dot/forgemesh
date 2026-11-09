@@ -488,4 +488,45 @@ with gr.Blocks(title="ForgeMesh – Imagen a 3D para juegos") as demo:
         s_btn.click(guardar_ajustes, [s_backend, s_modelo, s_vision, s_key, s_hf, s_url, s_auto], [s_msg])
 
 if __name__ == "__main__":
-    demo.queue().launch(inbrowser=True)
+    import os, sys, socket, subprocess, shutil
+
+    def _ventana(url):
+        """Abre ForgeMesh como ventana de app (sin barra de navegador)."""
+        for exe in (shutil.which("msedge"), r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe"):
+            if exe and os.path.exists(exe):
+                subprocess.Popen([exe, f"--app={url}", "--window-size=1280,900"])
+                return True
+        import webbrowser
+        webbrowser.open(url)
+        return False
+
+    def _acceso_directo():
+        """Crea un icono ForgeMesh en el escritorio (una sola vez)."""
+        if sys.platform != "win32":
+            return
+        base = os.path.dirname(os.path.abspath(__file__))
+        marca = os.path.join(base, "venv", "acceso.txt")
+        if os.path.exists(marca):
+            return
+        ps = ("$d=[Environment]::GetFolderPath('Desktop');$s=(New-Object -ComObject WScript.Shell).CreateShortcut($d+'\\ForgeMesh.lnk');"
+              f"$s.TargetPath='{base}\\INICIAR.bat';$s.WorkingDirectory='{base}';$s.WindowStyle=7;"
+              "$s.IconLocation='shell32.dll,13';$s.Save()")
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps], timeout=20)
+            open(marca, "w").write("ok")
+        except Exception:
+            pass
+
+    _url = "http://127.0.0.1:7860"
+    _s = socket.socket()
+    _ya = _s.connect_ex(("127.0.0.1", 7860)) == 0
+    _s.close()
+    if _ya:  # ya esta corriendo: solo abrir la ventana
+        _ventana(_url)
+        sys.exit(0)
+    _acceso_directo()
+    demo.queue().launch(server_name="127.0.0.1", server_port=7860, inbrowser=False, prevent_thread_lock=True)
+    _ventana(_url)
+    demo.block_thread()
